@@ -1,0 +1,24 @@
+%macro prefixVar(mvarname, pfx, idx_list);
+   data _null_;
+      length str $30000;
+      str = '';
+      count = 1;
+
+      if index("&idx_list", '-') then do;
+         l = input(trim(scan("&idx_list", 1, '-')), 12.);
+         r = input(trim(scan("&idx_list", 2, '-')), 12.);
+         if l < r then do i = l to r;
+            str = catx(' ', str, "&pfx"||trim(left(i)));
+         end;
+         else do i = l to r by -1;
+            str = catx(' ', str, "&pfx"||trim(left(i)));
+         end;
+      end;
+      else do while(scan("&idx_list", count, ' ') ne ' ');
+         str = catx(' ', str, "&pfx"||scan("&idx_list", count, ' '));
+         count + 1;
+         output;
+      end;
+      call symputx("&mvarname", str, 'g');
+   run;
+%mend;

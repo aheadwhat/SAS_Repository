@@ -1,0 +1,37 @@
+%macro mfunc(var);
+   max(length(trim(left(&var))))
+%mend;
+%macro apply(dsname, mfunc, out = new_table);
+   %if %index(&dsname, %str(.)) %then %do;
+      %let dsn = %scan(&dsname, 2, %str(.));
+      %let lib = %scan(&dsname, 1, %str(.));
+   %end;
+   %else %do;
+      %let dsn = &dsname;
+      %let lib = work;
+   %end;
+   proc sql noprint;
+      select name into: name separated by " " from dictionary.columns where memname = "%upcase(&dsn)" and libname = "%upcase(&lib)" and type = "char";
+   quit;
+   %let count = 1;
+   %let set_command =;
+   %do %while(%scan(&name, &count) ne);
+      proc sql;
+         create table temp_&count as 
+            select %unquote(&mfunc(%scan(&name, &count))) as col&count from &dsname;
+      quit;
+      %let set_command = &set_command set temp_&count %str(;);
+      %let count = %eval(&count + 1);
+   %end;
+   data &out;
+      &set_command;
+   run;
+   proc datasets library = work nolist;
+      delete temp_:;
+   run;
+   quit;
+  
+%mend;
+
+
+** %apply(test,%nrstr(%%mfunc))

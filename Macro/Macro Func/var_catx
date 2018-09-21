@@ -1,0 +1,20 @@
+options minoperator;
+%macro var_catx(sp, var_list_1, var_list_2);
+   %local temp_var;
+   %let count = 1;
+   %let temp_var =  ;
+   %do %while(%scan(&var_list_1, &count) ne and %scan(&var_list_2, &count) ne );
+      %let temp_var = &temp_var %scan(&var_list_1, &count)&sp.%scan(&var_list_2, &count);
+      %let count = %eval(&count + 1);
+   %end;
+   %if %scan(&var_list_1, &count) = and %scan(&var_list_2, &count) = %then;
+   %else %do;
+      %put Unmatched length of the varible list;
+      %abort;
+   %end; 
+   %put over &temp_var;
+   &temp_var;
+%mend;
+
+/*%let tmp = %var_catx(%str( $),var1 var2 var3, 2 4 5);*/
+/*%put &tmp;*/

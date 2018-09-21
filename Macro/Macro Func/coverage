@@ -1,0 +1,43 @@
+%macro coverage(varlist, dsname = , svlibref = work);
+   data _null_;
+      if _n_ = 0 then set &dsname nobs = n;
+      call symputx('obs_cnt', n);
+   run;
+
+   data _null_;
+      length str $30000;
+      str = 'proc sql; create table &svlibref..coverage as select';
+      str1 = 'sum(case when missing(';
+      str2 = ')then 0 else 1 end)/&obs_cnt as coverage_';
+      %put start &varlist;
+      %let count = 1;
+      %do %while(%scan(&varlist,&count) ne);
+      %put inside &count;
+         %if &count = 1 %then %do;
+            str = catx(' ', str, str1);
+            str = cats(str, "%scan(&varlist,&count)", str2, &count);
+         %end;
+         %else str = cats(str, str1, "%scan(&varlist,&count)", str2, &count);;
+         
+         %put pass;
+         %let count = %eval(&count + 1);
+         %if %scan(&varlist, &count) ne %then str = cats(str, ',');
+         %else str = catx(' ', str, 'from &dsname; quit;');;
+      %end;
+      call execute(str);
+      put 'str = ' str;
+
+   run;
+
+   proc transpose data = coverage out = coverage_t(rename = col1 = coverage);
+      var _all_;
+   run;
+
+   proc sort data = coverage_t out = &svlibref..coverage;
+      by descending coverage;
+   run;
+
+   proc delete data = coverage_t;
+   run;
+
+%mend coverage;

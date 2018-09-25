@@ -1,0 +1,55 @@
+%macro rank_bound(rankVar, rankby, decm=,  dsname = , out = rank_supl);
+/** supplement the sample bound for the ranked dataset
+**  @param
+**  rankVar: rank variable (e.g. the result of PROC RANK)
+**  rankby:  the original variable before ranking (e.g. the input of the PROC RANK) 
+**  decm:    the place of digit to keep
+**  dsname:  original dataset before PROC RANK
+**  out:     name of the output dataset
+*/
+    proc sql;
+        create table rk as 
+            select &rankVar label = 'Rank Group',
+                   min(&rankby) as min_breakpoint label = 'Sample Lower Bound',
+                   max(&rankby) as max_breakpoint label = 'Sample Upper Bound'
+                from &dsname
+                group by &rankVar
+                order by &rankVar;
+    quit;
+    
+    data temp;
+        merge rk rk(rename = min_breakpoint = temp_var firstobs = 2 keep = min_breakpoint);
+        length r_endpoint 8;
+        %if &decm = or &decm = 0 %then %do;
+            r_endpoint = floor((temp_var + max_breakpoint)/2);
+        %end;
+        %else %do;
+            r_endpoint = round((temp_var + max_breakpoint)/2, 10**-decm);
+        %end;
+        drop temp_var;
+    run;
+    
+    data &out;
+        set temp end = last;
+        intl_nm = _n_;
+        label intl_nm = 'Partition Flag';
+        retain l_endpoint 0;
+        retain miss 0;
+        length interval $32;
+        drop miss l_endpoint r_endpoint;
+        
+        if missing(min_breakpoint) then do;
+            interval = "MISSING";
+            miss = 1;
+        end;
+        else if (_n_ = 1 and miss = 0) or (_n_ = 2 and miss = 1) then do;
+            interval = cats('(low,', r_endpoint, ']');
+            l_endpoint = r_endpoint;
+        end;
+        else if last then interval = cats('(', l_endpoint, ',', 'high)');
+        else do;
+            interval = cats('(', l_endpoint, ',', r_endpoint, ']');
+            l_endpoint = r_endpoint;
+        end;
+    run;
+%mend;

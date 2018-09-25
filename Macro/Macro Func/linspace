@@ -1,0 +1,21 @@
+%macro linspace(start, end, n);
+   %local temp step list;
+   %let temp = &start;
+   %let list = ;
+   %let step = %sysevalf((&end - &start)/&n);
+   %let count = 1;
+   %do %while(&count <= &n);
+      %let temp = %sysevalf(&temp + &step);
+      %let list = &list &temp;
+      %let count = %eval(&count + 1);
+   %end;
+   &list;
+%mend;
+
+/*%let a = %linspace(1.2, 2, 3);*/
+/*%let b = %linspace(-1,-2, 10);*/
+/*%put &a;*/
+/*%put &b;*/
+/*%let c = %linspace(1,1,5);*/
+/*%put &c;*/
+/**/

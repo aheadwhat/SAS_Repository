@@ -1,0 +1,19 @@
+%macro arrayList(start, increment, n);
+   %local temp list;
+   %let temp = &start;
+   %let list =;
+   %let count = 1;
+   %do %while(&count <= &n);
+      %let temp = %sysevalf(&temp + &increment);
+      %let list = &list &temp;
+      %let count = %eval(&count + 1);
+   %end;
+   &list;
+%mend;
+
+/*%let a = %arrayList(1.2, 2, 3);*/
+/*%let b = %arrayList(-1,-2, 5);*/
+/*%put &a;*/
+/*%put &b;*/
+/*%let c = %arrayList(1, 0, 5);*/
+/*%put &c;*/

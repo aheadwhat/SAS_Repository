@@ -1,0 +1,33 @@
+%macro fmt_template(breakpoint, pattern = oc);
+   %if &pattern = oc %then %do;
+      %let op = %str(<-);
+      %let l_brace = %str(%();
+      %let r_brace = %str(]);
+   %end;
+   %else %if &pattern = co %then %do;
+      %let op = %str(-<);
+      %let l_brace = %str([);
+      %let r_brace = %str(%));
+   %end;
+   %else %do;
+      %put the pattern is not supported yet;
+      %abort;
+   %end;
+
+   %local res;
+   %let res = ;
+   %let n = 1;
+   %do %while(%scan(&breakpoint, &n) ne);
+      %let n = %eval(&n + 1);
+   %end;
+   %let n = %eval(&n - 1);
+   %let count = 1;
+   %do %while(&count < &n);
+      %let temp_1 = %scan(&breakpoint, &count); 
+      %let count = %eval(&count + 1);
+      %let temp_2 = %scan(&breakpoint, &count);
+      %let res = %str(&res &temp_1.&op.&temp_2 = "&l_brace.&temp_1,&temp_2.&r_brace");
+   %end;
+
+   &res;
+%mend;

@@ -17,15 +17,15 @@
    %local res;
    %let res = ;
    %let n = 1;
-   %do %while(%scan(&breakpoint, &n) ne);
+   %do %while(%scan(&breakpoint, &n, %str( )) ne);
       %let n = %eval(&n + 1);
    %end;
    %let n = %eval(&n - 1);
    %let count = 1;
    %do %while(&count < &n);
-      %let temp_1 = %scan(&breakpoint, &count); 
+      %let temp_1 = %scan(&breakpoint, &count, %str( )); 
       %let count = %eval(&count + 1);
-      %let temp_2 = %scan(&breakpoint, &count);
+      %let temp_2 = %scan(&breakpoint, &count, %str( ));
       %let res = %str(&res &temp_1.&op.&temp_2 = "&l_brace.&temp_1,&temp_2.&r_brace");
    %end;
 

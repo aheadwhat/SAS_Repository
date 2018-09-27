@@ -29,5 +29,5 @@
       %let res = %str(&res &temp_1.&op.&temp_2 = "&l_brace.&temp_1,&temp_2.&r_brace");
    %end;
 
-   &res;
+   &res
 %mend;

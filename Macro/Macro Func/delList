@@ -1,0 +1,11 @@
+%macro delList(list, ex_list);
+   %local res;
+   %let count = 1;
+   %let res=;
+   %do %while(%scan(&list, &count) ne);
+      %if %scan(&list, &count) in &ex_list %then;
+      %else %let res = %scan(&list, &count);
+      %let count = %eval(&count + 1);
+   %end;
+   &res;
+%mend;

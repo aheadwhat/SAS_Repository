@@ -1,0 +1,33 @@
+%macro sort_interval(dsname, sortby, out);
+   data temp_data;
+      set &dsname;
+      x = scan(&sortby, 1,',');
+      if index(x, 'low') then temp_idx = 0;
+      else temp_idx = compress(x,,'kd') - 0;  
+      drop x;
+   run;
+   proc sort data = temp_data;
+      by temp_idx;
+   run;
+   data %if &out = %then &dsname; %else &out;;
+      set temp_data;
+      drop temp_idx;
+   run;
+%mend;
+
+
+/* testing instances*/
+/*
+data interval_test;
+   do i = 4 to 0 by -1;
+      if i = 0 then interval = '(low, xx]';
+      else interval = cats('(',i,',', i+2,']');
+      if i = 4 then interval = cats('(',i, ',high)');
+      output;
+   end;
+   interval = 'MISSING';
+   output;
+run;
+%sort_interval(interval_test, interval,out =sort_temp);
+%sort_interval(interval_test, interval)
+*/

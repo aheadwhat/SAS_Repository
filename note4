@@ -1,0 +1,669 @@
+/**************
+更新所有值　
+*************/
+proc sql;
+update countries
+set population=population*1.05;
+quit;
+
+/**************
+更新部分值　
+*************/
+
+proc sql;
+update countries
+set population=population*1.05
+where name like 'b%';
+update countries
+set population=population*1.07
+where name in('japan','russia');
+quit;
+
+/***********
+删除行
+**************/
+proc sql;
+delete
+from countries
+where name like 'b%';
+quit;
+
+/***********
+添加列
+**************/
+proc sql;
+alter table countries
+add density num label='population density' format=6.2;
+update countries
+set density=population/10;
+quit;
+
+/**********/
+proc sql;
+create table countries as
+select*
+,population/11 as density1
+label='population density1' format=6.2
+from countries;
+quit;
+
+
+/*****************
+修改列操作：alter(只能修改字符型变量长度，不能修改数值型变量长度）：modify
+******************/
+proc sql;
+alter table countries
+modify name char(60) format=$60.;
+quit;
+
+
+/****************
+删除列操作alter:drop
+********************/
+proc sql;
+alter table countries
+drop density;
+quit;
+
+/**************/
+proc sql;
+create table test
+     like sashelp.class;
+insert into test
+      select * from sashelp.class;
+alter table test
+    add new num format=dollar.1;
+ /*
+    update test
+        set new=height*1.2;*/
+update test
+    set new=height*
+            case when height<=60 then 1.2 else 1
+             end;
+quit;
+
+
+/***************
+删除部分观测
+************/
+proc sql;
+delete 
+from test
+where sex eq '女';
+quit;
+/***************
+删除全表
+************/
+proc sql;
+drop table test;
+quit;
+
+/**************
+简单无重复随即抽样　
+************/
+
+/**************
+１通过 uniform:生成０－１随机数 函数
+************/
+data all;
+do i=1 to 100;
+output;
+end;
+run;
+data smp;
+set all;
+rdm=uniform(0);
+run;
+proc sort data=smp out=out_smp;by rdm;
+run;
+data out_smp;
+set out_smp;
+if _n_ le 30;
+run;
+proc sort data=out_smp;by i;run;
+
+/**************
+２通过surveyselect过程
+************/
+proc surveyselect data=all out=b noprint
+sampsize=30;/*按样本数抽取*/
+run;
+proc surveyselect data=all out=b1 noprint
+samprate=30;/*按样本比例抽取*/
+run;
+
+/**************
+3 通过data步
+************/
+%let sampsize=100;
+data tmp;
+set sashelp.prdsale nobs=nobs;
+retain _cnt_ 0;
+if &sampsize > _cnt_ and ranuni(0)*(nobs+1-_n_)<(&sampsize-_cnt_)then do;
+_cnt_+1;
+output;
+end;
+drop _cnt_;
+run;
+/**************
+分层等比例抽样
+************/
+proc sort data=sashelp.class out=outsort;
+by sex age;
+run;
+proc surveyselect data=outsort noprint
+method=srs rate=0.5 out=output1
+;
+strata sex age;
+run;
+%macro rate1;
+data ts;
+set sashelp.class(keep=age sex);
+if sex="女" then do;
+  if age ge 11 and age le 13 then do;
+   rate=0.5;
+   end;
+   else do;rate=0.3;
+   end;end;
+else if sex="男" then do;
+    if age ge 11 and age le 13 then do;
+        rate=0.6;
+           end;
+else do;rate=0.7;
+end;end;
+else do;rate=1;end;
+drop age sex;
+run;
+%mend rate1;
+%rate1;
+
+
+proc surveyselect data=outsort noprint
+method=srs 
+rate=(0.5,0.3,0.6,0.7)
+out=output1
+;
+strata sex age;
+run;
+data aaa;
+set sashelp.class(keep=age);
+if age ge 11 and age le 13 then do;
+y=1 ;
+end;
+else do ;
+y=2;
+end;
+/*age1='11-13'
+else age1='>13';*/
+
+run;
+
+ 
+
+ /*hash*/
+data patients;
+length patient_id $ 16 discharge 8;
+input patient_id discharge:date9.;
+datalines;
+smith-4123 15mar2004
+hagen-2834 23apr2004
+smith-2437 15jan2004
+flinn-2940 12feb2004
+;
+data _null_;
+if _n_=0 then set patients;
+declare hash ht(dataset:"patients",ordered:"ascending");
+ht.definekey("patient_id");
+ht.definedata("patient_id","discharge");
+ht.definedone();
+declare hiter iter("ht");
+rc=iter.first();
+do while (rc=0);
+put patient_id discharge:date9.;
+rc=iter.next();
+end;
+run;
+data hashb;
+set talent3(keep=ID LastHired BirthDate);
+run;
+
+
+data hashc;
+if 0 then set work.talent3;
+if _n_=1 then do;
+declare hash share(dataset:"talent3");
+share.definekey('ID','LastHired');
+share.definedata('Month');
+share.definedone();
+end;
+set hashb;
+tvalue=0;
+k=0;
+do LastHired=BirthDate to LastHired by 1;
+rc=share.find();
+if rc=0 then do;
+tvalue+Month;
+k+1;
+end;
+end;
+run;
+
+
+/*format:转换输出格式时必须用put函数，每一个格式后面都要加点，如果是字符型还需加$符合****/
+proc format;
+value $ sex_fmt
+'F'='女'
+'M'='男'
+other='未知';
+value age_fmt
+low-10='10岁以下'
+11-13='11-13岁'
+14-<15='14-15岁'
+15-high='15岁以上';
+run;
+data test;
+set sashelp.class(keep=sex age);
+x=put(sex,$sex_fmt.);
+y=put(age,age_fmt.);
+run;
+/********************************************************/
+data test1;
+attrib start length=$30 end length=$30 label length=$30 hlo length=$11;
+set sashelp.class (keep=name age) end=last;
+if age<=10 then do;
+start="low";
+end=10;
+hlo="";
+sexcl="N";
+eexcl="Y";
+end;
+else if age<=13 then do;
+start=11;
+end=13;
+hlo="";
+sexcl="N";
+eexcl="Y";
+end;
+else if age<=15 then do;
+start=14;
+end=15;
+hlo="";
+sexcl="N";
+eexcl="Y";
+end;
+else do;
+start=16;
+end="H";
+hlo="";
+sexcl="N";
+eexcl="N";
+end;
+set test(keep=y);
+label=y;
+fmtname="fmt_age";
+run;
+
+/*********************/
+/**正则表达式：prx********/
+data _null_;
+if _n_=1 then pattern_num=prxparse("/cat/");
+   retain pattern_num;
+   input string $30;
+    position=prxmatch(pattern_num,string);
+   file print;
+   put pattern_num=string=position=;
+datalines;
+there is a cat in this file
+does not match cat
+cat in the beginning
+at the end,a cat
+cat
+;
+run;
+
+/***************/
+data match_phone;
+set talent3;
+if _n_=1 then pattern=prxparse("/\d{3}[42]\d{3}/");
+retain pattern;
+if prxmatch(pattern,phone) gt 0 then output;
+run;
+/*找出不匹配的电话号码*********/
+
+data notmatch_phone;
+set talent3;
+where  not prxmatch("/\d{3}[1-5]\d{3}/",cat(phone,""));/*cat：把数值型转为字符型******/
+run;
+data notmatch_phone;
+set talent3;
+where  not prxmatch("/\d{3}[1-5]\d{3}/",put(phone,10.));/*put：把数值型转为字符型******/
+run;
+
+data _null_;
+   position=prxmatch('/world/', 'Hello world!');  
+ put position=;
+run;
+
+/*****************/
+/*call prxsubstr:提取匹配某种模式的字符串**/
+data extract;
+if _n_=1 then do;
+pattern=prxparse("/\d\d\d?\d\d\d-\d{4}/");
+if missing(pattern) then do;
+put "error in compiling regular expression";
+stop;
+end;
+end;
+retain pattern;
+length number $ 15;
+input string $char80.;
+call prxsubstr(pattern,string,start,length);
+if start gt 0 then do;
+number=substr(string,start,length);
+number=compress(number,"");
+output;
+end;
+keep number;
+datalines;
+this line does not have any phone numbers on it
+this line does:(123)345-4567 la di la di la
+also valid (123) 999-9999
+two numbers here (333)444-5555 and (800)123-4567
+;
+run;
+
+/**********************************************/
+/*call prxchange:替换文本:mouse替换cat **/
+data cat_and_mouse;
+input text $char40.;
+length new_text $ 80;
+if _n_=1 then match=prxparse("s/[Cc]at/mouse/");
+retain match;
+call prxchange(match,-1,text,new_text,len,trunc,num);/*-1表示替换所有匹配的字符串*/
+if trunc then put "note:new_text was truncated";
+datalines;
+the Cat in the hat
+there are two cat cats in this line
+here is no replacement
+;
+run;
+
+
+/**********************************************/
+/********prxposn:提取名字 **********/
+data reversednames;
+input name & $32.;
+datalines;
+Jones,Fred
+Kavich,Kate
+Turley,Ron
+Dulix,Yolanda
+;
+data firstlastnames;
+length first last $16;
+keep first last;
+retain re;
+if _N_=1 then
+re=prxparse('/(\w+),(\w+)/');
+set reversednames;
+if prxmatch(re,name) then
+do;
+last=prxposn(re,1,name);
+first=prxposn(re,2,name);
+end;
+run;
+
+
+/********prxposn:提取符合规定的名字 **********/
+
+
+data old;
+input name $60.;
+datalines;
+Judith S Reaveley
+Ralph F. Morgan
+Jess Ennis
+Carol Echols
+Kelly Hansen Huff
+Judith
+Nick
+Jones
+;
+data new;
+length first middle last $40.;
+re1=prxparse('/(\S+)\s+([^\s]+\s+)?(\S+)/o');
+re2=prxparse('/(\S+)(\s+)([^\s]+\s+)(?)(\S+)/o');
+set old;
+id1=prxmatch(re1,name);
+id2=prxmatch(re2,name);
+if id1 then
+do;
+first=prxposn(re1,1,name);
+middle=prxposn(re1,2,name);
+last=prxposn(re1,3,name);
+end;
+if id2 then test=prxposn(re1,4,name);
+put test=;
+run;
+
+/**********************/
+/*********call prxnext :返回匹配模式的多个位置*/
+data _null_;
+expressiond=prxparse('/[crb]at/');
+text='the woods have a bat,cat,and a rat!';
+start=1;
+stop=length(text);
+
+call prxnext(expressiond,start,stop ,text,position,length);
+do while(position >0);
+found=substr(text,position,length);
+put found= position= length=;
+call prxnext(expressiond,start,stop,text,position,length);
+end;
+run;
+
+
+/* combine/delete/other operations...for specific set of variables*/
+%let idx_list = %str(1,2,3);
+%macro gen_idx(prefix);
+	%let count =1 ;
+	%do %while(%scan(&idx_list, &count) ne);
+		%let count = %eval(&count + 1);
+		&prefix%scan(&idx_list, %eval(&count - 1)) /*!!!no semi-colon!!*/
+	%end;
+%mend gen_idx;
+
+/*to concatenate*/
+data dataset.iv_join;
+	set %gen_idx(dataset.iv);
+run;
+/*to delete*/
+proc datasets library = dataset nolist;
+	delete %gen_idx(iv);
+run;
+quit;
+
+
+
+Macro expressions are NOT evaluated inside of single quotes.   For that you need to use double quotes.  Note that if you have complex  strings with quotes nested inside of other quotes it is the outer quotes  that determine whether SAS will evaluate the macro expression.
+
+Try these examples:
+
+%let x=Value ;
+
+%put '&x';
+
+%put "&x";
+
+%put 'The value of x is "&x".' ;
+
+%put "The value of x is '&x'." ;
+
+Another rule is that to include the quote character itself in the string you need to double it.
+
+%put "The value of x is ""&x""." ;
+
+Also  watch out for the rules imposed by database system that you are passing  the query to.  SAS does not care whether you quote strings with single  or double quotes, but some database systems do care.  For example  Teradata uses single quotes for character literals and uses double  quotes for names.
+
+
+
+
+
+
+
+
+
+When the argument to CALL EXECUTE is a macro program reference, that macro
+program executes immediately during execution of the DATA step. If that macro
+program generates SAS statements, however, those statements execute after the DATA
+step finishes.
+
+
+
+
+
+iml matrix initialization: longest element constrain...
+
+use PUTC to resolve it
+
+
+
+
+
+    proc iml;
+    /* in SAS/IML, the CALL EXECUTE statement runs immediately */
+    start Func(x);
+       y = x`*x;
+     
+      /* Debugging tip: Use PAUSE to enter INTERACTIVE mode INSIDE module! */
+      pause "Inside 'Func'; submit RESUME to resume computations.";
+      /* Execution pauses until you submit RESUME, then continues from the next statement. */
+     
+       return (y);
+    finish;
+     
+    w = Func( {1 2 3} );
+
+use pause to help debug
+
+
+
+
+
+    proc sql;
+    alter table lib.have
+      modify TextVar char(20) format=$20.;
+    quit;
+
+730
+
+output显式输出，会影响到无操作的时的隐式结果
+
+
+
+infile/datalines + input 
+
+length/informat/attrib 改变默认的变量长度
+
+
+
+input的多种输入形式
+
+1. list input
+2. modified list input
+3. column input
+4. formatted input
+5. named input
+
+
+
+预先定义了变量之后，后面可以用隐式赋值的方式，比如：
+
+value = 1;
+
+value + 1;
+
+
+
+---
+
+macro programs解析方式
+
+    data test;
+    	set earn;
+    	call missing(new_val);
+    	if n = 1 then new_val + 1;
+    run;
+
+
+
+call execute(...)
+
+参数如果是已有变量，那么就不用加引号。不然，就以字符串形式作为输入。针对macro编程的场景，要注意单引号还有双引号的区别，前者在执行阶段才进行，后者在编译阶段进行。
+
+
+
+冒号+informat，空格中断
+
+
+
+SQL要用单引号，跟双引号不等价
+
+
+
+@还有@@ (trailing at and double trailing at)，都会保持行，但是前者保持不到下一个数据步循环。
+
+
+
+Sum Statement:
+
+variable + expression
+
+等价于 RETAIN variable 0; variable = SUM(variable, expression);
+
+
+
+Using Shortcuts for Lists of Variable Names
+
+1. Numbered range lists
+2. Name range lists: use 2 hyphens!
+3. Name prefix lists
+4. Special SAS name lists: _NUMERIC_ etc.
+
+
+
+One optional statement for any PROC that reads a SAS data set is the WHERE statement.
+
+Unlike subsetting in a DATA step, using a WHERE statement in a procedure does not create a new data set. That is one of the reasons why WHERE statements are sometimes more efficient than other ways of subsetting.
+
+
+
+8.7
+
+macro program中使用函数，sysfunc
+
+_IORC_ is created automatically when you use the MODIFY statement or the SET statement with KEY=. The value of _IORC_ is a numeric return code that indicates the status of the I/O operation from the most  recently executed MODIFY or SET statement with KEY=. Checking the                  value of this variable enables you to detect abnormal I/O conditions and to direct execution down specific code paths instead of having  the application terminate abnormally. For example, if the KEY= variable value does match between two observations, you might want to combine                  them and output an observation. If they do not match, however, you might want to only write a note to the log.                                  
+
+Because the values of the  _IORC_ automatic variable are internal and subject to change, the SYSRC macro was created to enable you to test for specific I/O conditions while protecting your code from future changes in _IORC_  values.  When you use SYSRC, you can check the value of _IORC_ by specifying one of the mnemonics listed in the following table. 
+
+
+
+Do not confuse the DROP statement with the DELETE statement.  The DROP statement excludes variables from output data sets; the DELETE statement excludes observations.        
+
+Do not use both DROP and KEEP statements within the same DATA step.  
+
+Drop statement的位置没有要求                                               
+
+
+
+
+
+
+
+---
+
+8.10
+
+macro var在单引号中不会得到解析
+
+sql不支持双引号

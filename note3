@@ -1,0 +1,862 @@
+/*remove*/
+data a;
+input x@@;
+cards;
+2 3
+;
+data b;
+input var@@;
+cards;
+10 20 30 40 50
+;
+run;
+data b;
+set a;
+modify b point=x;
+remove;
+run;
+data a;
+input x y@@;
+cards;
+1 10 2 29 3 30 4 49
+;
+run;
+data b;
+input x y@@;
+cards;
+3 300 4 400 5 500
+;
+run;
+/*
+用b的y值更新a中的y值 只更新值相同x;等价于leftjoin
+*/
+data a;
+modify a b ;
+by x;
+if _iorc_=0 then replace;
+else _error_=0;
+run;
+/*
+用b的y值完全更新到a中的y值 包括新的x等价于outerjoin
+*/
+data a;
+modify a b ;
+by x;
+if _iorc_=0 then replace;
+else do;_error_=0;output;end;
+run;
+/*
+如果数据集a有x值不在数据b中，则输出该x值。如果在数据集b中，则删除该x值
+*/
+data a;
+modify a b ;
+by x;
+if _iorc_=0 then remove;
+else _error_=0;
+run;
+data a;
+set sashelp.class;
+if _n_ ge 3 then stop; /*stop 停止当前的data步*/
+run;
+data a;
+set sashelp.class;
+if sex eq '男' then delete;
+run;
+
+/*sas数据集管理*/
+/*append：把来自sas数据集的所有数据添加到另一个sas数据集的后面*/
+/*向一个空数据集添加数据*/
+proc append base=null data=sashelp.class;
+run;
+proc append base=null data=sashelp.class(where=(sex='女'));
+run;
+/*在append运行之前删除整个base数据集*/
+proc datasets lib=work nolist;
+delete null;
+quit;
+proc append base=null data=sashelp.class;run;
+/*先判断null是否存在，如果存在则删除，否则直接执行append*/
+%macro dl;
+%if %sysfunc(exist(null))ne 0%then %do;
+proc datasets lib=work nolist;
+delete null;
+quit;
+%end;
+proc append base=null data=sashelp.class;run;
+%mend dl;
+%dl;
+/*如果数据集a包含当前月数据，则删除当前月数据，并把数据集b中当前月数据append到数据集a中*/
+data _null_;
+x=today();
+format x yymmdd10.;
+call symput('data_month',put(intnx("month",x,0),yymmn6.));
+run;
+%put &data_month;
+data a;
+input month$ var;
+cards;
+200908 10
+200909 20
+200910 30
+200911 40
+201406 50
+;
+data b;
+input month$ var;
+cards;
+200911 400
+;
+data a;
+modify a;
+if month="&data_month" then remove;
+run;
+proc append base=a data= b;run;
+/* sort :nodupkey:删除重复值*/
+data a;
+input x y @@;
+cards;
+1 20 1 10 1 30 2 40 2 50
+;
+run;
+proc sort data=a nodupkey out=b;by x;run;
+
+/*catt：拼接函数*/
+data a;
+length cat$ 100;
+input x1$ x2$ x3$ y;
+cat=catt(of x1-x3);
+cards;
+a1 b1 c1 1
+a2 b2 c3 2
+;
+run;
+proc sort data=a out =b;
+by cat;
+run;
+/*可行的代码*/
+proc sort data=a out=b;
+by x1-x3;
+run;
+/* transpose:转置*/
+proc transpose data=sashelp.class out=a name=test;
+idlabel name;
+;run;
+/*datasets*/
+proc datasets lib=sashelp details;
+copy in=sashelp out=work;
+select air class vslib ac ets;
+proc datasets lib=work nolist;
+delete class ets(mt=catalog);
+copy in=work out=chap4 move memtype=data;
+select air ac(mt=catalog);
+quit;
+
+/*除a没有被删除，其余所有work中成员均被删除*/
+proc datasets lib=work detail;
+save a/mt=data;
+quit;
+/*修改sas数据集*/
+proc datasets lib=sashelp ;
+copy in=sashelp out =ch3;
+select class air;
+proc datasets lib=ch3 nolist;
+modify class(label='test subjects' read=green);/*read设置读取密码：green*/
+index create idx=(name sex)/nomiss unique;
+format height 6.2;
+label height='test height';
+modify air;
+rename date=new_date;
+quit;
+/*do over*/
+data a;
+input v1 v2 v3@@;
+cards;
+1 2 3 1 4 3 5 2 4
+;
+data b;
+set a;
+_tem=max(of v1-v3);
+array arr v1-v3;
+do over arr;
+if arr=_tem then v4=vname(arr);/*vname:返回数组对应的变量名*/
+end;
+/*
+drop _tem;
+*/
+run;
+/*lag：延迟函数*/
+data test;
+input stockcode$ time price;
+cards;
+1 2007 15
+1 2006 16
+1 2005 17
+2 2007 18
+2 2006 19
+2 2005 20
+3 2007 21 
+3 2006 22
+3 2005 23
+4 2007 24
+4 2006 25 
+4 2005 26
+5 2007 27
+5 2006 28
+5 2005 29
+
+;
+data wanted;
+set test;
+by notsorted stockcode;
+lagprice=lag(price);
+if first.stockcode then call missing(lagprice);
+run;
+data tt;
+set test;
+x=range(1,1.1);
+run;
+/*二分法解方程*/
+data _null_;
+start=1;
+end=2;
+do until(range(start,end) le 0.0001);
+y1=log(start)+start-1.5;
+temp=(start+end)/2;
+y2=log(temp)+temp-1.5;
+y3=log(end)+end-1.5;
+if y1*y2<0 then do;
+end=temp;
+end;
+else if y1*y3<0 then do;
+start=temp;
+end;
+put y1=;
+put y2=;
+put y3=;
+put start=;
+put temp=;
+put end=;
+end;
+final_value=(start+end)/2;
+put start=;
+put end=;
+put final_value;
+y1_final=log(final_value)+final_value-1.5;
+put y1_final=;
+run;
+/*leave*/
+data a;
+set sashelp.class;
+select;
+when(sex='女')do;
+if weight ge 100 then leave;
+y=1;
+end;
+when(sex='男') y=2;
+otherwise;
+end;
+run;
+/*return +data*/
+data a;
+input a b c @@;
+cards;
+1 2 3 2 6 8
+;
+data a1;
+set a;
+do x=1 to 2;
+ax=a*x;
+if ax>b then return;
+output;
+end;
+run;
+/*和以上代码效果相同*/
+data a;
+input a b c @@;
+do x=1 to 2;
+ax=a*x;
+if ax>b then return;
+output;
+end;
+cards;
+1 2 3 2 6 8
+;
+run;
+/*把程序发送到email*/
+filename outbox email
+to='beauty.zhang@chinapnr.com'
+type='text/html'
+subject='test subject';
+ods html body=outbox /*mail it!*/;
+title 'Here is title';
+proc print data=sashelp.class;
+run;
+ods html close;
+/*抓取某个网页的源代码*/
+filename ws url "http://www.sas.com";
+data sas;
+infile ws length=len lrecl=4000;;
+input record $varying4000.len;
+run;
+/*%include:调用sas程序脚本、sas代码、外部文件、数据行。*/
+filename test "path";
+%include test;
+/*将日志输出到外部文件*/
+proc printto log= 'E:\Users_Intern\test\newlog.txt';
+proc print data=sashelp.class;
+proc printto;run;
+
+data new;
+set sashelp.class;
+y=weight*10;
+x="here is text";
+run;
+/*创建宏变量:
+%let variable_name=variable_value
+*/
+/*example*/
+%let m_value=newdata;/*m_value是宏变量名，newdata是宏变量值*/
+%let m_value=3;/*3覆盖newdata，3是字符，但可以参与数值计算*/
+/*显示宏变量值:
+%put & variabel_name
+   */
+%let a=xxx;
+%put &a;
+%put here is &a;
+
+/*引用宏变量*/
+%let var=ddd;
+data a;
+x="here is &var.";/*&宏变量.比&宏变量更安全*/
+run;
+%let mvar=here;
+%put &mvar.100;
+%put &mvar 100;
+%put &mvar..txt;
+%let x=10;
+%put &&mvar.&x;/*here10*/
+/*定义宏*/
+%macro test;
+data a;
+x=1;
+run;
+%mend test;
+%test;/*调用宏*/
+/*宏内宏*/
+%macro prt;
+proc print data=sashelp.class;
+run;
+%mend prt;
+%macro nest;
+%test;
+%prt;
+%mend nest;
+%nest;
+/*创建永久储存的宏*/
+libname ch3 'E:\Users_Intern\test';
+options mstored sasmstore=ch3;
+%macro ch3/store;
+data a;
+x=1;
+run;
+%mend ch3;
+/*调用永久存储的宏*/
+%ch3;
+/*创建宏参数*/
+/*按值创建*/
+%macro value(x=,y=);
+data test;
+x=&x.;
+y=&y.;
+run;
+%mend value;
+/*按地址创建*/
+%macro addr(x,y);
+data test;
+x=&x.;
+y=&y.;
+run;
+%mend addr;
+/*参数赋值*/
+%value(x=10,y=20);
+%addr(10,20);
+
+
+%let num=10;
+%let x=%sysfunc(trim(%sysfunc(left(&num))));
+%put &x;
+
+
+/*format*应用*/
+%let parm=1.02;
+proc format;
+value category
+low-<0 ='less than zero'
+0      ='equal to zero'
+0<-high='greater than zero'
+other   ='missing';
+run;
+%put &parm is %sysfunc(putn(&parm,catagory.));
+
+
+%macro a;
+aaaaaa;
+%mend a;
+%macro b;
+bbbbbb;
+%mend b;
+%macro c;
+ccccc;
+%mend c;
+%let x=%nrstr(%a*%b*%c);
+%put X:&x;
+%put The third word in X,with SCAN:%scan(&x,3,*);
+%put The third word in X,with QSCAN:%qscan(&x,3,*);
+
+data _null_;
+x='%a*%b*%c';
+put x=;
+scan=scan(x,3,'*');
+put scan=;
+run;
+/*比较%str和%nrstr*/
+%put The result of str is:%str(%a);
+%put The result of nrstr is:%nrstr(%a);
+/*%quote应用*/
+%macro dept2(state);
+%if %quote(&state) eq nc %then
+%put north carolina department of revenue;
+%else %if %quote(&state) eq %str(or) %then /*or是sas的逻辑操作符，必须用%str(or)*/
+%put department of revenue;
+%else %put others;
+%mend dept2;
+%dept2(or);
+%dept2(nc);
+/*%if  %then/ %else*/
+%macro obs(parm);
+%let parm1=%upcase(&parm);
+%if &parm1=PRE %then
+%do;
+data pre_obs;
+set sashelp.class(obs=5);
+if sex="女" then y=1;
+else y=2;
+run;
+%end;
+%else %if &parm1=POST %then
+%do;
+data post_obs;
+set sashelp.class(firstobs=6);
+if sex="女" then y=1;
+else y=2;
+run;
+%end;
+%mend obs;
+%obs(pre);
+
+/*
+%do macro-variable=start %to stop<%by increment>;
+*/
+%macro create(howmany);
+%do i=1 %to &howmany;
+data class&i;
+set sashelp.class(obs=&i.);
+run;
+%end;
+%mend create;
+%create(3);
+
+
+/*******
+%do %while(expression);
+文本及宏语句；
+%end;
+******/
+%macro dow();
+%let i=1;
+%do %while(&i<5);
+%let i=%eval(&i.+1);
+%put &i.;
+%end;
+%mend dow;
+%dow;
+
+%macro dw(word);
+%let i=1;
+data out;
+%do %while(%left(%scan(&word.,&i.)) ne %nrbquote(stop));
+%let var=%scan(&word.,&i.);
+%put &var.;
+out="&var";
+output;
+%let i=%eval(&i.+1);
+%put &i.;
+%end;
+run;
+%mend dw;
+%dw(%str(test1,test2,test3));
+
+/*****
+%do %until(expression);
+文本及宏语句；
+%end;
+******/
+%macro duntl(type);
+%let type=%upcase(&type);
+%let method=%str(LR GENMOD LOGSTC);
+%let i=0;
+%do %until(&type=%scan(&method,&i) or(&i>3));
+%let i=%eval(&i+1);
+%end;
+%if &i>3 %then %do;
+%put ERROR:methodology not supported;
+%end;
+%else %do;
+%put method:&type;
+%end;
+%mend duntl;
+%duntl(LR);
+%duntl(GLM);
+/****
+创建宏变量
+*****/
+/**
+1.通过ｓｑｌ创建一个宏变量
+*****/
+proc sql noprint;
+select distinct sex
+into:list_a separated by ''
+from sashelp.class;
+quit;
+%put &list_a;
+
+
+/**
+2.通过ｓｑｌ创建多个宏变量
+*****/
+proc sql noprint;
+select nvar,nobs /*nvar:变量数目，nobs:观测数目*/
+into :nvar,:nobs
+from dictionary.tables
+where libname='SASHELP' and memname='CLASS';
+quit;
+%put &nvar.;
+%put &nobs.;
+
+proc contents data=sashelp.class out=con_class;
+run;
+
+proc sql noprint;
+select name
+into:clist1-:clist999
+from dictionary.columns
+where libname='SASHELP' and memname='CLASS';
+quit;
+%put &clist1.;
+%put &clist2.;
+
+/****
+3.通过call symputx
+*****/
+data _null_;
+set sashelp.class nobs=obs;
+call symputx('m1',obs);
+call symput('m2',obs);
+stop;
+run;
+%put &m1.;
+%put &m2.;
+/***
+symputx:能消除后面参数的左右空格，而symput只能消除右空格
+****/
+data test&m1.;
+x=1;
+run;
+data test&m2.;
+x=1;
+run;
+data a2;
+set a1;
+run;
+
+
+/*****
+把多个数据集进行纵向拼接
+***/
+%macro conb(out=);
+data &out.;
+set %do i=1 %to 2;
+a&i
+%end;
+;
+run;
+%mend conb;
+%conb(out=result);
+
+
+%macro copy_data(cnt);
+proc datasets lib=work;
+change a=a1;
+%do i=1 %to &cnt;
+copy out=out;
+select a&i;
+change a&i=a%eval(&i+1);
+%end;
+change a%eval(&cnt+1)=a;
+quit;
+%mend copy_data;
+%copy_data(1);
+
+
+/************
+sql过程　
+*****************/
+
+proc sql outobs=10;
+create table class as
+select 
+name,
+case when sex eq "女" then "1"
+when sex eq "男" then "2"
+else "3"
+end as sex_tran label="sextrans",
+sum((weight-20))as new1 format=16.2,
+sum((height-10))as new2 format=16.2,
+(calculated new1 -calculated new2) as new
+from sashelp.class(where=(height between 50 and 70))
+group by name,calculated sex_tran
+order by calculated sex_tran desc;
+quit;
+/****
+union : 合并，但排除重复值
+****/
+proc sql;
+title 'a union b';
+create table t1 as
+select * from a1
+union
+select * from a2
+quit;
+/****
+union all: 合并，但不排除重复值
+****/
+proc sql;
+title 'a union all b';
+create table t2 as
+select * from a1
+union all
+select * from a2
+quit;
+
+/***********
+merge与 sql的 join 在“一对一”和“多对一”效果相同，但：”对多对“则完全不同
+*****************/
+
+data a1;
+input x y @@;
+cards;
+101 1  102 3 
+103 30 104 5
+;
+run;
+data a2;
+input x y @@;
+cards;
+101 10  102 30 
+103 5 105 50
+;
+run;
+data a3;
+input x y z1@@;
+cards;
+101 11 1 102 33 2
+102 300 3 104 5 4
+;
+run;
+data a4;
+input x y z2@@;
+cards;
+101 1 5 102 30 6
+102 5 7 102 100 8
+102 200 9 105 50 10
+;
+run;
+/***
+一对一：内连接join
+*****/
+proc sql;
+create table a11 as
+select a1.x,a2.y 
+from a1 join a2
+on a1.x=a2.x;
+quit;
+
+/******
+一对一：等价的内连接merge:in
+******/
+proc sort data=a1;by x;run;
+proc sort data=a2;by x;run;
+data a12;
+merge a1(in=ina) a2(in=inb);
+by x;
+if ina and inb;
+proc print;run;
+
+/***
+一对一：左连接　left join
+*****/
+/**************/
+proc sql;
+create table a21 as
+select a1.x
+case when a2.y is not null then a2.y
+else a1.y end as yy
+from a1
+left join a2
+on a1.x=a2.x
+;
+quit;
+
+/******
+一对一：等价的左连接merge:in选项
+******/
+proc sort data=a1;by x;run;
+proc sort data=a2;by x;run;
+data a22;
+merge a1(in=ina) a2(in=inb);
+by x;
+if ina ;
+proc print;run;
+/***
+一对一：全连接full join
+*****/
+proc sql;
+create table a31 as
+select 
+coalesce(a1.x,a2.x) as x
+,coalesce(a2.y,a1.y) as y  /***用a2的y更新a1的y，所以a2.y在前面**/
+from a1
+full join a2
+on a1.x=a2.x
+;
+quit;
+/***
+一对一：全连接merge
+*****/
+proc sort data=a1;by x;run;
+proc sort data=a2;by x;run;
+data a32;
+merge a1 a2;
+by x;
+run;
+proc print;run;
+
+/***
+多对对：内连接　 join
+*****/
+proc sql;
+create table a41 as
+select a3.x,a4.y ,a3.z1,a4.z2
+from a3 join a4
+on a3.x=a4.x;
+quit;
+/***
+多对对：内连接 merge 与full join 有区别
+*****/
+proc sort data=a3;by x;run;
+proc sort data=a4;by x;run;
+data a42;
+merge a3(in=ina) a4(in=inb);
+by x;
+if ina and inb;
+proc print;run;
+
+
+/******************************
+创建表
+*****************************/
+/***创建空表****/
+proc sql;
+create table countries
+(
+name char(20),
+capital char(50),
+population num
+)
+;
+quit;
+
+/*****
+data步创建表
+*******/
+data countries;
+length name $20 capital $50;
+length population 8;
+stop;
+run;
+
+
+/*********
+从查询结果结果创建表
+**************/
+
+proc sql outobs=10;
+create table a as
+select *
+from sashelp.class;
+quit;
+
+/********
+复制已用的表属性　
+*************/
+proc sql;
+create table a 
+like sashelp.class;
+describe table a;
+quit;
+/*************
+使用数据集选项
+******************/
+proc sql;
+create table a as
+select *
+from sashelp.class(drop=sex);
+quit;
+
+
+/****************
+行操作
+***************/
+/********
+添加行操作:使用set语句
+*******/
+proc sql;
+insert into countries
+set name='bangladesh',
+capital='dhaka',
+population=126394020
+set name='japan',
+capital='tokyo',
+population=12649668;
+quit;
+
+/********
+添加行操作:使用values 语句
+*******/
+proc sql;
+insert into countries
+values('bangladesh','dhaka',126394020)
+values('japan','tokyo',12649668);
+quit;
+
+
+/********
+添加行操作:使用select 语句
+*******/
+proc sql;
+create table newcountries
+like countries;
+insert into newcountries
+select * from countries
+where population ge 1200000;
+quit;

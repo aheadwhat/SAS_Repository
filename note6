@@ -1,0 +1,402 @@
+filename macros "E:\SAS Codes\MACRO";
+
+run;quit;;;;
+
+data test;
+   do i = 1 to 1000;
+      id = i;
+      score = abs(5+rannor(100)*10);
+      score_1 = abs(1 + rannor(200)*3);
+      if abs(rannor(100) >0.8) then score_2 = .;
+      else score_2 = rannor(100)+2;
+      score_3 = ranuni(100)* 2 + 1;
+      score_4 = ranuni(100)* 5 + 3;
+      tag = rand("Bern", 0.9);
+      score_0 = floor(ranuni(100)* 1000 + 1);
+      score_00 = floor(ranuni(100)* 20 + 1);
+      char = ''||trim(i);
+      char1 = ''||trim(i+floor(ranuni(100)*2+3));
+      output;
+   end;
+   drop i;
+run;
+
+proc means data = test;
+   var score;
+run;
+
+proc univariate data = test;
+   var score;
+   histogram;
+run;
+
+
+/** gchart testing**/
+proc gchart data = test;
+   vbar score score_1 / type = percent levels = 10;
+run;
+quit;
+
+proc gchart data = test;
+   vbar score_00 / discrete type = mean sumvar = tag mean ;
+   label score_00 = 'predictor';
+run;
+quit;
+
+
+
+axis label=("XXX" j=r "Percent");
+proc gchart data = test;
+   vbar score_00 / discrete type = percent subgroup = tag percent raxis = axis space = 0.5;
+   label score_00 = 'predictor';
+run;
+quit;
+
+
+proc gchart data = test;
+   vbar score_00 / discrete type = freq subgroup = tag noframe freq;
+run;
+quit;
+
+
+proc gchart data = test;
+   vbar score_00 / discrete type = freq subgroup = tag noframe freq;
+run;
+quit;
+
+
+/*hbar, suitable for the long tag scenarios*/
+proc gchart data = test;
+   hbar score_00 / discrete type = freq subgroup = tag noframe freq;
+run;
+quit;
+
+proc gchart data = test;
+   hbar score_00 / discrete type = percent subgroup = tag percent freq  raxis = axis space = 0.5 percentlabel= 'Percent';
+   label score_00 = 'predictor';
+run;
+quit;
+
+axis label = ("PCT.");
+proc gchart data = test;
+   hbar score_00 / discrete type = mean 
+                   sumvar = tag 
+                   meanlabel = 'Specific Ratio'
+                   raxis = axis 
+                   space = 0.5
+                   freq mean noframe;
+   label score_00 = 'Predictor';
+run;
+quit;
+
+
+
+
+
+
+axis1 label=("Recall Prob" j=c);
+axis2 label=("Splitting" j=r "Interval");
+proc gchart data = test;
+   hbar score_00 / discrete type = mean sumvar = tag freqlabel = 'freq' meanlabel = 'prob'  raxis=axis1 maxis=axis2 noframe ;
+
+run;
+quit;
+
+
+
+axis1 label=none value=none;
+axis2 label=none;
+axis3 minor=none;
+proc gchart data = test;
+   vbar tag / discrete type = freq group = score_00 subgroup = tag  noframe freq space =0 maxis=axis1 gaxis=axis2 raxis=axis3 ;
+run;
+quit;
+
+
+/*example from network*/
+data graph_prep;
+length pass_fail $4;
+format date date9.;
+input date date9. pass_fail count;
+datalines;
+31may2016 Fail 101
+31may2016 Pass 358
+30jun2016 Fail 101
+30jun2016 Pass 358
+31jul2016 Fail 97
+31jul2016 Pass 362
+;
+run;
+
+
+axis1 label=none value=none;
+axis2 label=none;
+axis3 minor=none;
+legend1 label=none;
+
+
+proc gchart data=graph_prep;
+vbar pass_fail / group=date space=0
+type=sum sumvar=count noframe
+inside=sum maxis=axis1 gaxis=axis2 raxis=axis3
+subgroup=pass_fail legend=legend1;
+run;
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%include macros(coverage);
+%coverage(score_1 score_2, dsname = test);
+
+
+
+
+DM "log; clear; ";
+DM log "OUT;CLEAR;LOG;CLEAR;";
+
+
+/* noprint, outobs directly affects the value of sqlobs*/
+proc sql outobs = 2;
+   select * from test where id <5;
+   select score_1 into :mvar_1-:mvar_&sqlobs from test;
+quit;
+%put _user_;
+
+%put &sqlobs;
+
+
+
+
+
+/*amazing order....*/
+data _null_;
+   if _n_ = 0 then set test(firstobs = 500 obs = 500) nobs = n;
+   put n;
+run;
+
+
+proc sql outobs = 5;
+   select id into: id_list separated by ' ' from test order by id desc;
+quit;
+
+%put &id_list;
+
+
+%include macros(get_head_tail);
+%get_head_tail(dsname = test, var = score_1, num = 3)
+%get_head_tail(dsname = test, var = score_1, num = 3, pattern = tail)
+
+%let var_list = var1 var2 var3;
+
+data _null_;
+   string = translate("&var_list", 'new', 'var' );
+   string2 = translate("string", "ooo", "ing");
+   put string string2; 
+run;
+
+%let var = %sysfunc(translate(&var_list, new, var));
+%put var: &var;
+
+%let var = %sysfunc(translate("&var_list", "new", "var"));
+%put var: &var;
+
+
+
+proc surveyselect data = test out = test_sp method = srs n = 100;
+run;
+
+
+
+data test_1;
+   length string $30000;
+   do i = 1 to 50000;
+      string = '1';
+      output;
+   end;
+run;
+
+
+data test_2(compress = yes);
+   set test_1;
+run;
+
+proc sort data = test_1 out = out;
+   by i;
+run;
+proc sort data = test_2 out = out;
+   by i;
+run;
+
+
+data test_3;
+   length string $100;
+   set test_1;
+run;
+
+data test_4;
+   length string id $100;
+   set test_1(obs = 100) end = last;
+   if last then string = '1111';
+run;
+
+
+data _null_;
+   string = '   1122';
+   string1 = '11122  ';
+   len = length(string);
+   len1 = length(string1);
+   len2 = lengthn(string);
+   len3 = length(string1);
+   put len len1 len2 len3; 
+run;
+
+
+proc sql;
+   select max(length(trim(left(string)))) from test_4; 
+quit;
+
+
+
+proc sql noprint;
+/*   create table temp_col as*/
+      select name into: var_c separated by ' '  
+         from dictionary.columns where memname = 'TEST' and libname = 'WORK' and type = 'char';
+quit;
+
+proc sql;
+   select max(length(trim(left(string)))) from test_4; 
+quit;
+
+/**************************************************************************/
+%macro mfunc(var);
+   max(&var)
+%mend;
+%macro apply(mfunc);
+   proc sql;
+      select %unquote(&mfunc(id)) as col from test;
+   quit;
+%mend;
+%apply(%nrbquote(%mfunc))
+/*%apply(%nrstr(%%mfunc))*/
+options mlogic mprint;
+/*interesting, %nrbquote not suitable to this scenario*/
+
+%macro test(var);
+   %put test;
+%mend;
+%test;
+/*positional param can be empty*/
+
+%put _user_;
+/***************************************************************************/
+
+%include macros(prefixVar);
+
+%prefixVar(temp_var, var, 1 22)
+%put &temp_var;
+
+
+options mlogic mprint;
+
+%include macros(var_catx);
+%let tmp = %var_catx(%str( $),var1 var2 var3, 2 4 5);
+%put &tmp;
+
+
+%macro mfunc(var);
+   max(length(trim(left(&var))))
+%mend;
+%macro apply(dsname, mfunc, out = new_table);
+   %if %index(&dsname, %str(.)) %then %do;
+      %let dsn = %scan(&dsname, 2, %str(.));
+      %let lib = %scan(&dsname, 1, %str(.));
+   %end;
+   %else %do;
+      %let dsn = &dsname;
+      %let lib = work;
+   %end;
+   proc sql noprint;
+      select name into: name separated by " " from dictionary.columns where memname = "%upcase(&dsn)" and libname = "%upcase(&lib)" and type = "char";
+   quit;
+   %let count = 1;
+   %let set_command =;
+   %do %while(%scan(&name, &count) ne);
+      proc sql;
+         create table temp_&count as 
+            select %unquote(&mfunc(%scan(&name, &count))) as col&count from &dsname;
+      quit;
+      %let set_command = &set_command set temp_&count %str(;);
+      %let count = %eval(&count + 1);
+   %end;
+   data &out;
+      &set_command;
+   run;
+   proc datasets library = work nolist;
+      delete temp_:;
+   run;
+   quit;
+  
+%mend;
+%apply(test,%nrstr(%%mfunc))
+
+
+proc sql;
+   select max(length(trim(left(char1)))) from test;
+quit;
+
+
+/*%macro test;*/
+/*   %let temp = ;*/
+/*   %do i = 1 %to 3;*/
+/*      %let temp = &temp set data&i %str(;);*/
+/*   %end;*/
+/*   %put &temp;*/
+/**/
+/*%mend;*/
+/*%test*/
+/**/
+/*data data1;*/
+/*   var1 = 1;*/
+/*   var2 = 2;*/
+/*   var3 = 4;*/
+/*run;*/
+/*data data2;*/
+/*   var11 = 1;*/
+/*   var12 = 2;*/
+/*   var13 = 4;*/
+/*run;*/
+/*data data3;*/
+/*   var21 = 1;*/
+/*   var22 = 2;*/
+/*   var23 = 4;*/
+/*run;*/
+/**/
+/*data test_data;*/
+/*   &temp;*/
+/*run;*/
+
+
+proc print data = test;
+   sum score;
+run;
+
+
+%macro test(obs = 2, dsname = test);
+   proc print data = test(obs = &obs);
+   run; 
+%mend;
+
+%test();
+%test;

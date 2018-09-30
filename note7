@@ -1,0 +1,817 @@
+/*test assign some numerical value to a missing variable*/
+data test;
+   input id sex$;
+   datalines;
+   1 m
+   2 f
+   3 m
+   4 m
+   5 .
+   ;
+run;
+
+
+data assignment;
+   set test;
+   if missing(sex) then sex = -1; /*so implicit transform happens*/
+run;
+/*coalese do not handle the implicit casting*/
+/*testing for the dot expression*/
+data assignment;
+   set test;
+   if sex ='' then do;
+      sex = -1; /*so implicit transform happens*/
+      put 'sex matching';
+   end;
+run;
+
+/*so not using the . to express missing*/
+
+
+
+/*testing %scan and %str*/
+%let str = 1 2 3;
+%macro test;
+   %let var1 = %scan(&str, 1);
+   %let var2 = %scan(&str, 2);
+   %let var11 = %scan(&str, 1, ' ');
+   %let var12 = %scan(&str, 2, ' ');
+   %let var21 = %scan(&str, 1, " ");
+   %let var22 = %scan(&str, 2, " ");
+
+   %put var1= &var1, var2= &var2;
+   %put var11= &var11, var12= &var12;  
+   %put var21= &var21, var22= &var22;
+%mend test;
+%test
+
+%let str = 1 2 3;
+/* clearly will fail*/
+%macro test;
+/* data _null_;*/
+/*    var = scan(&str, 1);*/
+/* run;*/
+%mend test;
+%test
+
+
+%let str1 = %str(1,2);
+%let str2 = 1,2;
+%let str3 = #$%^;
+%put &str1, &str2, &str3;
+%let str4 = '';
+%put &str4;
+
+%let str22 = 1','2;
+%macro testif;
+   %if &str1 = &str2 %then %put yes1;
+   %else %put no;
+   %if &str1 = str22 %then %put yes2;
+   %else %put no;
+   
+%mend testif;
+%testif
+/*%str keeps the special tokens, for normal situations, the tokens still keep not changed*/
+
+
+%let str = '1 2 3';
+%put &str;
+%macro test;
+/* %let var1 = %scan(&str, 1);*/
+/**not work**/
+
+   %let var1 = %scan(&str, 2, ' ');
+
+/* %let var1 = %sysfunc(scan(&str, 1, ' ')); */
+   /*' ' delimeter is needed*/;
+   %put var1= &var1;
+%mend test;
+%test
+
+
+%let str = 1*2 3;
+%macro test;
+   %let var1 = %scan(&str, 3);
+   %put var1= &var1;
+%mend test;
+%test
+/* use * and blank both as the delimeters*/
+
+%macro test;
+   %let var1 = %scan(&str, 1, '' '');
+   %let var2 = %scan(&str, 2, ' ');
+   %let var3 = %scan(&str, 2, %str());
+   %let var4 = %scan(&str, 2, %str(' '));
+   %put var1= &var1;
+   %put var2= &var2;
+   %put var3= &var3;
+   %put var4= &var4;
+
+
+%mend test;
+%test
+
+
+/* so %str is necessary when quotes are not double or ; are contained*/
+/* other delimeters seem work well*/
+
+
+
+%let str = %str(1*2 '' 3;);
+%macro test;
+/* %let var1 = %scan(&str, 2, %str(*)); */
+/* %put var1= &var1;*/
+   %put %scan(&str, 1, %str(*));
+/* %put %scan(&str, 2, %str(*));*/
+/* %put %scan(&str, 1, *);*/
+/* %put %scan(&str, 1, %str('));*/
+
+%mend test;
+%test;
+
+
+
+%let str = %str(1*2 %'%'%' 3);
+%let str0 = %str(1 2);
+%macro test;
+/* %put "&str";*/
+   %put "''';";
+   %put "1*2 ''' 3";
+   %put &str;
+
+%mend test;
+%test;
+
+/*%str cannot stop single quotes pairing*/
+%let str = %bquote(1*2 , '''');
+%macro test;
+   %put &str;
+   %put %scan(&str, 1 );
+   %put %scan(&str, 2 );
+   %put %scan(&str, 1, "'");
+   %put %scan(&str, 1, %str(%'));
+%mend test;
+%test;
+
+%let str = "1 2 3 5";
+
+%macro test;
+/* %put %scan(&str , 1); %** wrong, since the result will contains unmatched quote;*/
+   %put %scan(&str, 1 ," ");
+   %put %scan(&str, 2 , " ");
+%mend;
+%test
+
+
+%let str = '1 2 3 5';
+
+%macro test;
+/* %put %scan(&str , 1); %** wrong, since the result will contains unmatched quote;*/
+   %put %scan(&str, 1 ," ");
+   %put %scan(&str, 2 , " ");
+%mend;
+%test
+
+%let str = %str( ,'',1 2 3 5);
+
+%macro test;
+/* %put %scan(&str , 1); %** wrong, since the result will contains unmatched quote;*/
+   %put %scan(&str, 1 ," ");
+   %put %scan(&str, 2 , ' ');
+   %put %scan(&str, 1 ,',');
+%mend;
+%test
+
+
+
+
+
+';;%mend;%run;
+
+%macro test;
+   %let var1 = %scan(&str, 3, %str(')); 
+   %put var1= &var1;
+%mend test;
+%test
+/* use * and blank both as the delimeters*/
+
+%macro test;
+   %let var1 = %scan(&str, 1, '' '');
+   %let var2 = %scan(&str, 2, ' ');
+   %let var3 = %scan(&str, 2, %str());
+   %let var4 = %scan(&str, 2, %str(' '));
+   %put var1= &var1;
+   %put var2= &var2;
+   %put var3= &var3;
+   %put var4= &var4;
+%mend test;
+%test
+
+
+
+
+/** testing do-while*/
+%let str = 1 2 3;
+%put &str;
+%macro dowhile;
+   %let count = 1;
+   %put %scan("&str", &count, "*");
+   %if "&str" = '1 2 3' %then %put quotation same;
+   %if "&str" = "1 2 3" %then %put quotation not same;
+   %do %while(%scan("&str", &count, " ") ne);
+      %put %scan("&str", &count, " ");
+      %let count = %eval(&count + 1);
+   %end;
+%mend dowhile;
+%dowhile;
+
+/** testing do-while: round 2, testing single and double quotations*/
+%let str = %str(1 2 3);
+%put &str;
+%macro dowhile;
+   %let count = 1;
+   %do %while(%scan(&str, &count, ' ') ne);
+      %put %scan(&str, &count, ' ');
+      %let count = %eval(&count + 1);
+   %end;
+%mend dowhile;
+%dowhile;
+
+%macro dowhile;
+   %let count = 1;
+   %do %while(%scan(&str, &count, " ") ne);
+      %put %scan(&str, &count, " ");
+      %let count = %eval(&count + 1);
+   %end;
+%mend dowhile;
+%dowhile;
+
+/*testing the while stop condition*/
+%macro dowhile;
+   %let count = 1;
+   %do %while(%scan(&str, &count, " ") ^=);
+      %put %scan(&str, &count, " ");
+      %let count = %eval(&count + 1);
+   %end;
+%mend dowhile;
+%dowhile;
+
+
+%macro dountil;
+   %let count = 1;
+   %do %until(%scan(&str, &count, " ") = );
+      %put %scan(&str, &count, " ");
+      %let count = %eval(&count + 1);
+   %end;
+%mend dountil;
+%dountil;
+
+
+
+
+
+
+/*proc format testing*/
+proc format;
+   value fmt '1' = 1 '2' = 2 other = 100;
+run;
+
+data test;
+   input id sex$;
+   datalines;
+   1 '1'
+   2 '2'
+   3 '1'
+   4 '4 '
+   ;
+run;
+
+proc sql;
+   create table fm_test as 
+      select input(sex, fmt.) as sex from test;
+quit;
+
+
+
+/*testing scan, data generation and macro*/
+%let re_ord_list = . 2 1 3 4; /*%str is not needed in this program and the following wrapping is still needed*/
+%macro re_order;
+   data ord_temp;
+      attrib order length = 3;
+      keep order;
+      count = 1;
+      do while(scan("&re_ord_list", count, ' ') ne ' ');
+         order = scan("&re_ord_list", count, ' ');
+         count + 1;
+         output;
+      end;
+   run;
+%mend re_order;
+%re_order;
+
+
+
+/*macro can be used embeddedly*/
+%macro test;
+  %local loc;
+   %let loc = 18;
+   data test;
+      attrib count length= 3; 
+      count = max(1,&loc);
+      output;
+   run;
+%mend test;
+%test;
+
+
+
+/* testing format and informat*/
+data test;
+   input id age;
+   datalines;
+   1 2
+   2 11
+   3 44
+   4 55
+   5 6
+   ;
+run;
+
+proc sql;
+   create table fm_table as 
+      select age informat = 8.2 from test;
+quit;
+
+data fm_table;
+   set test;
+   informat age 8.2; 
+
+run;
+
+
+%let test = 1;
+data fm_table;
+   set test;
+   %put &test;
+   put 'put' "&test";
+run;
+
+%macro testput;
+%let test = 1;
+data fm_table;
+   set test;
+   %put &test 'test' test;
+   put 'put' "&test";
+run;
+%mend testput;
+%testput;
+
+
+/*testing gen var*/
+data test;
+   do i = 1 to 3;
+      var1 = rannor(1);
+      var2 = rannor(3);
+      output;
+   end;
+run;
+
+%let att_cnt = 2;
+%macro gen_var;
+   data test;
+      set test;
+      var%eval(&att_cnt + 1) = var1 + 1;
+      var%eval(&att_cnt + 2) = var1 + 2;
+   run;
+
+%mend gen_var;
+%gen_var;
+ 
+
+data test;
+   input id info;
+   datalines;
+   1 '2'
+   2 '33'
+   3 '344'
+   4 'meiyou'
+   5 6
+   ;
+run;
+
+proc format;
+   value fmt low - 3200 = [6.2]
+            other = '-1';
+run;
+
+data test;
+   set test;
+   format info fmt.; 
+run;
+
+data _null_;
+   if 1 > . then put 'yes';
+run;
+
+proc print data = test(obs = 3);
+run;
+
+data test;
+   input id info;
+   datalines;
+   1 2
+   2 33
+   3 344
+   4 1
+   5 2
+   ;  
+run;
+
+%let pfx = t;
+data test_1;
+   merge tes&pfx tes&pfx(rename=info=new_info  firstobs = 2 keep = info);
+   temp = sum(info, new_info);
+/* drop new_info;*/
+run;
+
+
+data test_2;
+   set test;
+   retain var 0;
+   var = var + 0.5;
+   if _n_ = 1 then var = info;
+   else var = info +0.5;
+   var = floor(var);
+run;
+
+
+
+/*testing left join*/
+data a;
+   input id value;
+   datalines;
+   2 20
+   1 40
+   2 30
+   ;
+run;
+
+data b;
+   input id value;
+   datalines;
+   1 20
+   2 40
+   ;
+run;
+
+proc sql;
+   select t1.*
+      from a as t1
+      left join b as t2
+      on t1.id = t2.id;
+
+quit;
+
+proc sql;
+   select t1.*
+      from a as t1, b as t2
+      where t1.id = t2.id;
+
+quit;
+
+
+
+%put %sysfunc(pathname(work));
+
+data _null_;
+   var1 = abs(max(1,-2));
+   var2 = abs(-34);
+   put var1 var2;
+run;
+
+
+
+%let ex_list = 1 3;
+options minoperator;
+options nomlogic;
+%macro ex_test;
+      %do i = 1 %to 5;
+         %if &i in &ex_list %then %put i =  &i;
+      
+      %end;
+
+%mend ex_test;
+%ex_test;
+
+data test;
+   input id value;
+   datalines;
+   2 20
+   1 40
+   2 30
+   ;
+run;
+
+proc sql;
+   select count(*) as cnt,
+             count(id) as id_cnt 
+      from test group by id;
+quit;
+
+
+data test;
+   input id info;
+   datalines;
+   1 2
+   2 33
+   3 344
+   4 1
+   5 2
+   ;  
+run;
+
+%let i = 1;
+option datastmtchk = allkeywords;
+%macro test;
+data %if &i = 1 %then test_1;  %else test_2;
+   set test;
+run;
+%mend test;
+%test;
+
+option DATASTMTCHK=corekeywords;
+%macro test;
+data %do i = 1 %to 2; test&i %end;;
+   set test;
+run;
+%mend test;
+%test;
+
+%macro test;
+   data test_mset;
+      set %do i = 1 %to 2; test&i; %end;;
+   run;
+
+%mend test;
+%test;
+
+data test1;
+   input id value;
+   datalines;
+   2 20
+   1 40
+   2 30
+   ;
+run;
+
+proc sql;
+   select t1.*, t2.value 
+   from test(sortedby = id) as t1 
+   left join  test1 as t2
+   on t1.id = t2.id;
+
+quit;
+
+data _null_;
+   string = '1ssssbb';
+   idx = index(string, 's');
+   temp = substr(string, 1,1) - 0;
+   if vtype(temp) = 'N' then put 'n';
+   if vtype(temp) = 'C' then put 'C';
+   put idx temp;
+run; 
+
+
+
+data test;
+   input id value;
+   datalines;
+   2 20.22
+   1 40.33
+   2 30.1
+   3 4
+   ;
+run;
+
+proc format;
+   value fmt . = 'MISSING' other = [12.];
+run;
+
+data test;
+   set test;
+   format value fmt.;
+run;
+
+
+data test;
+   input id value $8.;
+   datalines;
+   2 20.223
+   1 40.33
+   2 30.1
+   3   4
+   ;
+run;
+
+proc format;
+   invalue fmt '' = .  other = [8.];
+/* value $fmtv '' = . other = [12.];*/
+run;
+
+data test1;
+   set test;
+   array arr{*} _character_;
+   length var 8;
+   
+   var = input(arr{1}, fmt.);    
+   drop id;
+   rename var = id;
+run;
+
+
+
+%let mvar = 5-6;
+%let mvar = 6-2;
+%macro test;
+   data _null_;
+      con = index("&mvar", '-');
+      if con then put "yes";
+      else put "no";
+   run;
+%mend;
+%test;
+
+%macro test;
+   data _null_;
+      con = index("&mvar", '-');
+      if con then do;
+            a = input(scan("&mvar", 1, '-'),12.);
+            b = input(scan("&mvar", 2, '-'),12.);
+/*          if a > b then abort;*/
+            if a < b then 
+            do i = a to b;
+               put 'i =' i;
+            end;
+            else do i = a to b by -1;
+               put 'i=' i;
+            end;
+      end;
+   run;
+%mend;
+%test;
+
+data _null_;
+   i = 1;
+   str = 'yes'||trim(left(i));
+   put str;
+   
+run;
+
+
+data test;
+   str =  ' 0.334';
+   str1 = '1';
+   var = compress(str);
+   var1 = compress(str1);
+run;
+
+
+
+data test;
+   set test1;
+   if vtype(varr) = 'N' then put 'N';
+   else if vtype(varr) = 'Y' then put 'Y';
+   
+   typ = vtype(varr);
+   put 'typ = ' typ;
+run;
+/*default N*/
+
+
+options dlcreatedir;
+libname dataset 'D:\temp';
+
+
+
+%let var_list= var1 var2 var3;
+%let var_pfx_list = var dataset.var;
+
+data var1 var2 var3 dataset.var1 dataset.var2 dataset.var3;
+   set test;
+run;
+
+%macro delVar(var_list = , var_pfx_list =);
+   %if &var_list ne %then %do;
+      proc delete data = &var_list;
+      run;
+   %end;
+   %if &var_pfx_list ne %then %do;
+
+   %end;
+
+%mend delVar;
+%delVar(var_list = &var_list);
+
+
+%let v1= varr;
+%let v2 =id;
+data test3;
+   set test(keep = &v1 &v2);
+run;
+
+
+
+data test0;
+  if _n_ = 0 then do;
+      set test;
+      put 'n' _n_;
+  end;
+  if _n_ <0 then do;
+     set test_2;
+  end;
+
+run;
+
+
+%let string = 2 33 ad dbdd;
+data test3;
+   set test2;
+   retain count 1;
+   if "&string" contains trim(info) then do;
+      var = cats('var', count);
+      count = count +1;
+   end;
+
+run;
+
+/** testing update*/
+data master;
+   input id value 8.;
+   datalines;
+   2 20.223
+   1 40.33
+   4 30.1
+   3   4
+   ; 
+run;
+
+data trans;
+   input id value 8.;
+   datalines;
+   2 2
+   3 3
+   1 .
+   5 5
+   ;
+run;
+
+proc sort data = master;
+by id;
+proc sort data = trans;
+by id;
+run;
+
+data uptest;
+   update master trans;
+   by id;
+run;
+
+
+data _null_;
+   length newnum 8;
+   num = 333.4444;
+/*   newnum = input(num, 8.2);*/
+   newnum = round(num, .1);
+   put num newnum;
+   pow = 10**-3;
+   put pow;
+run;
+
+
+%let decm = 3;
+data _null_;
+   pow = 10**-&decm;
+   num = 333.4444;
+   newnum = round(num, pow);
+   put pow newnum;
+run;
+
+
+data _null_;
+   length num 8;
+   num = 333.444;
+   newnum = input('333.444', 8.2);
+   newnum2 = input(' ', 8.2);
+   typ = vtype(newnum);
+   put newnum typ newnum2;
+   newnum3 = '   -3333.33'-0;
+   put newnum3;
+   typ = vtype(newnum3);
+   put typ;
+run;
+
+
+proc format;
+   invalue infmt ''=. other = [12.];
+   value fmt '' = . other = [12.];
+run;

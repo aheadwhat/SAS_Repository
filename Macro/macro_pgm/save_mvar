@@ -1,0 +1,12 @@
+%macro save_mvar(var, out = mvar_backup);
+   data &out;
+      length var $32;
+      %let count = 1;
+      %do %while(%scan(&var, &count) ne);
+         var = "%scan(&var, &count)";
+         val = symget(var);
+         output;
+         %let count = %eval(&count + 1);
+      %end;
+   run;
+%mend;

@@ -1,7 +1,11 @@
-%macro mfunc(var);
-   max(length(trim(left(&var))))
-%mend;
-%macro apply(dsname, mfunc, out = new_table);
+%macro apply(dsname, mfunc, col = 'all', out = new_table);
+   %if %lowcase(&col) = 'all' %then %let typ = %str(('char', 'num'));
+   %else %if %lowcase(&col) = 'char' %then %let typ = %str(('char'));
+   %else %if %lowcase(&col) = 'num' %then %let typ = %str(('num'));
+   %else %do;
+      %put Input Parameter INVALID!;
+      %abort;
+   %end;
    %if %index(&dsname, %str(.)) %then %do;
       %let dsn = %scan(&dsname, 2, %str(.));
       %let lib = %scan(&dsname, 1, %str(.));
@@ -11,7 +15,7 @@
       %let lib = work;
    %end;
    proc sql noprint;
-      select name into: name separated by " " from dictionary.columns where memname = "%upcase(&dsn)" and libname = "%upcase(&lib)" and type = "char";
+      select name into: name separated by " " from dictionary.columns where memname = "%upcase(&dsn)" and libname = "%upcase(&lib)" and type in &typ;
    quit;
    %let count = 1;
    %let set_command =;
@@ -33,5 +37,14 @@
   
 %mend;
 
+/**
+%macro mfunc(var);
+   max(length(trim(left(&var))))
+%mend;
+%apply(test,%nrstr(%%mfunc), col = 'char')
 
-** %apply(test,%nrstr(%%mfunc))
+%macro mfunc(var);
+   max(&var)
+%mend;
+%apply(test,%nrstr(%%mfunc), col = 'NUM')
+**/

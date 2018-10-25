@@ -1,0 +1,57 @@
+%macro rep_pat(template)/parmbuff;
+   %let parm = %qsubstr(&syspbuff, 2, %length(&syspbuff) - 2);
+   %let var_cnt = %sysfunc(countc(&parm, %str(,)));
+   %put variable pairs: &var_cnt;
+   /** check the equal-dimension constraint for the nonempty variables*/
+   %let pos = 2;
+   %do %while(%sysevalf(&pos le (&var_cnt + 1)));
+      %let cur_var = %scan(&parm, &pos, %str(,)); 
+      %put first_loop cur_var &cur_var;
+      %if &pos = 2 %then %do;
+         %let pre_pat_cnt = %sysfunc(countw(&cur_var));
+      %end;
+      %else %do;
+         %let cur_pat_cnt = %sysfunc(countw(&cur_var));
+         %if &cur_pat_cnt ne &pre_pat_cnt and &cur_pat_cnt ne 0 %then %do;
+            %put parameter list NOT MATCH!;
+            %abort;
+         %end;
+         %if &cur_pat_cnt ne 0 %then %let pre_pat_cnt = &cur_pat_cnt;
+      %end;
+      %let pos = %eval(&pos + 1);
+   %end;
+   
+   %put pre_pat_cnt &pre_pat_cnt;
+
+   %let pat_list =;
+   %let pos = 1;
+   %do %while(&pos le &pre_pat_cnt);
+      %let pos_1 = 2;
+      %do %while(%sysevalf(&pos_1 le (&var_cnt + 1)));
+         %let cur_var = %scan(&parm, &pos_1, %str(,));
+         %put cur_var &cur_var;
+         %if &pos_1 = 2 %then %let temp_pat = &template%str(%() %scan(&cur_var, &pos);  
+         %else %let temp_pat = &temp_pat %str(,) %scan(&cur_var, &pos);
+         %let pos_1 = %eval(&pos_1 + 1); 
+      %end;
+      %put temp_pat_before: &temp_pat;
+      %let temp_pat = %unquote(%nrstr(%%)&temp_pat%str(%)));
+      %put temp_pat &temp_pat;
+      %let pat_list = &pat_list &temp_pat;
+      %put pat_list &pat_list;
+      %let pos = %eval(&pos + 1);
+   %end;
+   &pat_list;
+%mend;
+
+/*%macro template(var);*/
+/*   %sysevalf(&var + 1)*/
+/*%mend;*/
+/*%let res = %rep_pat(template, 1 2 3)*/
+/*%put &res;*/
+/**/
+/*%macro template(var1, var2);*/
+/*   %sysevalf(&var1 + &var2)*/
+/*%mend;*/
+/*%let res = %rep_pat(template, 1 2 3, 3 5 6)*/
+/*%put &res;*/

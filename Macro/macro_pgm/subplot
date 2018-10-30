@@ -1,0 +1,28 @@
+/**crude implementation of subplot in sas**/
+/**plot_pair defines the (x, y) pair to plot the scatter/
+%macro subplot(data, plot_pair = interval value, nrow = 3, ncol = 4);
+   symbol1 interpol=join value=dot;
+   ods layout start columns = &ncol rows = &nrow column_gutter = 0 row_gutter = 0; 
+   /** row_heights=(3.5in 3.5in);*/
+   goptions hsize=2in vsize=2in;
+   %let count =1;
+   %do %while(%scan(&data, &count) ne);
+      %if %eval(%sysfunc(ceil(&count/&ncol)) > &nrow) %then %do;
+         %put too much data to contain in one layout;
+      %end;
+      %else %do;
+         %let row = %sysfunc(ceil(&count/&ncol));
+         %let col = %sysfunc(mod(&count, &ncol));
+         %if &col = 0 %then %let col = &ncol;
+         ods region row = &row column = &col;
+         proc gplot data = %scan(&data, &count);
+            plot %scan(&plot_pair, 2)%str(*)%scan(&plot_pair, 1)/noframe;
+            title "%scan(&data, &count)";
+         run;
+      %end;
+      %let count = %eval(&count + 1);
+   %end;
+   ods layout end;
+   quit;
+%mend;
+%subplot(&test, plot_pair = i value);

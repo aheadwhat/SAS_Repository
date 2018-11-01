@@ -1,6 +1,6 @@
 /**crude implementation of subplot in sas**/
 /**plot_pair defines the (x, y) pair to plot the scatter/
-%macro subplot(data, plot_pair = interval value, nrow = 3, ncol = 4);
+%macro subplot(data, plot_pair = value%str(*)interval, nrow = 3, ncol = 4);
    symbol1 interpol=join value=dot;
    ods layout start columns = &ncol rows = &nrow column_gutter = 0 row_gutter = 0; 
    /** row_heights=(3.5in 3.5in);*/
@@ -16,8 +16,14 @@
          %if &col = 0 %then %let col = &ncol;
          ods region row = &row column = &col;
          proc gplot data = %scan(&data, &count);
-            plot %scan(&plot_pair, 2)%str(*)%scan(&plot_pair, 1)/noframe;
+            plot &plot_pair/overlay noframe legend = legend;
             title "%scan(&data, &count)";
+            %let i = 1;
+            legend frame label = none 
+               /* position = (top right inside)*/
+            value = (%do %while(%scan(&plot_pair, &i) ne);
+                  %let i = %eval(&i + 1);
+                 "%scan(&plot_pair, %eval(&i - 1), %str( ))" %end;);
          run;
       %end;
       %let count = %eval(&count + 1);
@@ -25,4 +31,23 @@
    ods layout end;
    quit;
 %mend;
-%subplot(&test, plot_pair = i value);
+
+/*
+%macro generate_data;
+%global test;
+%let test = ;
+%do i = 1 %to 10;
+   data test&i;
+      do i = 1 to 5;
+         value = abs((rannor(100))*4);
+         value1 = abs((rannor(100)) * 2);
+         value2 = abs((rannor(100)));
+         output;
+      end;
+   run;
+   %let test = &test test&i;
+%end;
+%mend;
+%generate_data;
+%subplot(&test, plot_pair = %str(value*i value1*i value2*i));
+*/

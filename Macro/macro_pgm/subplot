@@ -6,7 +6,7 @@
    /** row_heights=(3.5in 3.5in);*/
    goptions hsize=2in vsize=2in;
    %let count =1;
-   %do %while(%scan(&data, &count) ne);
+   %do %while(%scan(&data, &count, %str( )) ne);
       %if %eval(%sysfunc(ceil(&count/&ncol)) > &nrow) %then %do;
          %put too much data to contain in one layout;
       %end;
@@ -15,13 +15,13 @@
          %let col = %sysfunc(mod(&count, &ncol));
          %if &col = 0 %then %let col = &ncol;
          ods region row = &row column = &col;
-         proc gplot data = %scan(&data, &count);
+         proc gplot data = %scan(&data, &count, %str( ));
             plot &plot_pair/overlay noframe legend = legend;
-            title "%scan(&data, &count)";
+            title "%scan(&data, &count, %str( ))";
             %let i = 1;
             legend frame label = none 
                /* position = (top right inside)*/
-            value = (%do %while(%scan(&plot_pair, &i) ne);
+            value = (%do %while(%qscan(&plot_pair, &i, %str( )) ne);
                   %let i = %eval(&i + 1);
                  "%scan(&plot_pair, %eval(&i - 1), %str( ))" %end;);
          run;

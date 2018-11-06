@@ -16,6 +16,8 @@
          %if &col = 0 %then %let col = &ncol;
          ods region row = &row column = &col;
          proc gplot data = %scan(&data, &count, %str( ));
+            /*axis1 reflabel = (...);*/
+            /*used axis statment with vref option for plot*/
             plot &plot_pair/overlay noframe legend = legend;
             title "%scan(&data, &count, %str( ))";
             %let i = 1;

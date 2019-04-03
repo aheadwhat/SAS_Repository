@@ -1,0 +1,275 @@
+import csv
+/** FOR CSV Files uploaded from Windows **/
+
+FILENAME CSV "<Your CSV File>" TERMSTR=CRLF;
+
+/** FOR CSV Files uploaded from Unix/MacOS **/
+
+FILENAME CSV "<Your CSV File>" TERMSTR=LF;
+
+/** Import the CSV file.  **/
+
+PROC IMPORT DATAFILE=CSV
+		    OUT=WORK.MYCSV
+		    DBMS=CSV
+		    REPLACE;
+RUN;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/** Import an XLSX file.  **/
+
+PROC IMPORT DATAFILE="<Your XLSX File>"
+		    OUT=WORK.MYEXCEL
+		    DBMS=XLSX
+		    REPLACE;
+RUN;
+
+/** Print the results. **/
+
+PROC PRINT DATA=WORK.MYEXCEL; RUN;
+
+
+
+
+
+
+
+
+
+/* Simulate linear regression data */
+data regdata;
+   call streaminit(112358);
+   keep x1-x3 y;
+   b0 = 4; b1 = 0.8; b2 = 1.2; b3 = 2.4;
+   do i=1 to 100;
+      x1 = rand( 'NORMAL',5,0.5 );
+      x2 = rand( 'NORMAL',8,0.3 );
+      x3 = rand( 'NORMAL',6,0.1 );
+      epsilon = rand( 'NORMAL',0,0.8 );
+      y = b0 + b1*x1 + b2*x2 + b3*x3 + epsilon;
+      output;
+   end;
+run;
+proc print;
+run;
+
+/* Simulate one-way ANOVA data */
+
+data onewayanovadata;
+   call streaminit(112358);
+   drop n;
+   do n = 1 to 100;
+      treatment = rand( 'TABLE', .2, .4, .4);
+      if treatment = 1 then response = rand( 'NORMAL', 10, 0.8 );
+      else 
+      if treatment = 2 then response = rand( 'NORMAL', 11, 0.8 );
+      else 
+      if treatment = 3 then response = rand( 'NORMAL', 15, 0.8 );  
+      output;
+   end;
+run;
+  
+proc print;
+run;
+
+
+/* DS2 Program */
+
+proc ds2;
+data out(overwrite=yes);
+  dcl double x;
+  dcl char(32) c;
+
+  method init();
+  end;
+
+  method run();
+    put 'Hello World!';
+  end;
+
+  method term();
+  end;
+enddata;
+run; quit;
+
+/* DS2 Package */
+
+proc ds2;
+package my_package / overwrite=yes;
+  dcl double k;
+  method my_package();
+    put 'Constructor';
+  end;
+
+  method delete();
+    put 'Destructor';
+  end;
+
+  method my_meth(double x) returns double;
+    return(x * 2);
+  end;
+endpackage;
+run;
+
+data out(overwrite=yes);
+  dcl package my_package p();
+  dcl double x;
+
+  method init();
+    x = p.my_meth(5);
+    put x=;
+
+    p.k = 2112;
+    x = p.k;
+    put x=;
+  end;
+enddata;
+run; quit;
+
+
+/* DS2 Thread Program Template */
+
+proc ds2;
+thread thread_pgm / overwrite=yes;
+  dcl double x;
+  dcl char(32) c;
+
+  method init();
+  end;
+
+  method run();
+    x = _threadid_;
+    c = put(_threadid_, ROMAN.);
+    put 'Thread id as a number and Roman character: ' x c;
+  end;
+
+  method term();
+  end;
+endthread;
+run;
+
+data out(overwrite=yes);
+  dcl thread thread_pgm t;
+  method run();
+    set from t threads=4;
+  end;
+enddata;
+run; quit;
+
+
+
+
+
+/*** Graph **/
+/*--Bar Panel--*/
+
+title 'Mileage by Origin and Type';
+proc sgpanel data=sashelp.cars(where=(type in ('Sedan' 'Sports'))) noautolegend;
+  panelby Type / novarname columns=2 onepanel;
+  vbar origin / response=mpg_city stat=mean group=origin;
+  rowaxis grid;
+  run;
+
+
+/*--Fit Plot--*/
+
+title 'Mileage by Horsepower for USA';
+proc sgplot data=sashelp.cars(where=(origin='USA'));
+  reg x=horsepower y=mpg_city / degree=2 clm='CL Mean';
+  keylegend / location=inside position=topright across=1;
+  xaxis grid;
+  yaxis grid;
+  run;
+
+/*--Comparative Scatter Plot--*/
+
+title 'Mileage by Horsepower and Weight';
+proc sgscatter data=sashelp.cars(where=(type in ('Sedan' 'Sports')));
+  label mpg_city='City';
+  label mpg_highway='Highway';
+  compare x=(mpg_city mpg_highway) y=(horsepower weight) /
+     transparency=0.8 markerattrs=graphdata1(symbol=circlefilled);
+  run;
+
+/*--Box Panel--*/
+
+title 'Cholesterol by Weight and Sex';
+proc sgpanel data=sashelp.heart(where=(weight_status ne 'Underweight'));
+  panelby weight_status / novarname;
+  vbox cholesterol / category=sex;
+  rowaxis grid;
+  run;
+
+
+/*--HBar Plot--*/
+
+title 'Mileage by Type';
+proc sgplot data=sashelp.cars ;
+  hbar type / response=mpg_city  stat=mean  limits=both;
+  yaxis display=(nolabel) grid;
+  xaxis display=(nolabel);
+  run;
+
+
+/*--HighLow Plot--*/
+
+title 'Monthly Stock Price for IBM';
+proc sgplot data=sashelp.stocks(where=(stock eq 'IBM' and date > '01Jan2003'd));
+  highlow x=date high=high low=low / open=open close=close
+      lineattrs=(thickness=2) y2axis;
+  xaxis display=(nolabel);
+  y2axis display=(nolabel) grid;
+  run;
+
+/*--Histogram--*/
+
+title 'Distribution of Mileage';
+proc sgplot data=sashelp.cars(where=(type ne 'Hybrid'));
+  histogram mpg_city;
+  density mpg_city / lineattrs=(pattern=solid);
+  density mpg_city / type=kernel lineattrs=(pattern=solid);
+  keylegend / location=inside position=topright across=1;
+  yaxis offsetmin=0 grid;
+run;
+
+/*--Scatter Plot Matrix--*/
+
+title 'Vehicle Profile';
+proc sgscatter data=sashelp.cars(where=(type in ('Sedan' 'Sports')));
+  label mpg_city='City';
+  label mpg_highway='Highway';
+  matrix mpg_city mpg_highway horsepower weight /
+     transparency=0.8 markerattrs=graphdata3(symbol=circlefilled);
+  run;
+
+
+/*--VBox Plot--*/
+
+title 'Mileage by Type and Origin';
+proc sgplot data=sashelp.cars(where=(type in ('Sedan' 'Sports'))) ;
+  vbox mpg_city / category=origin group=type groupdisplay=cluster
+    lineattrs=(pattern=solid) whiskerattrs=(pattern=solid);
+  xaxis display=(nolabel);
+  yaxis grid;
+  keylegend / location=inside position=topright across=1;
+  run;
+
+
+
+
+inside the DATA STEP
+fileexist("")
+
+abort return;/**stop and no more further **/

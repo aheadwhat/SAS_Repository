@@ -1,3 +1,4 @@
+
 data test;
 	input class1 class2 :$2. value;
 datalines;
@@ -10,23 +11,17 @@ datalines;
 run;
 
 
-/*'quit)';"run;%mend;*/
 
-option nomprint nomlogic;
-
-option minoperator;
 %macro cross_feature(attr1, val_list1, attr2, val_list2, cf_nm=var);
 	%local mask1;
 	%local mask2;
-	%if %sysfunc(notdigit(%superq(val_list1)))=0 and %index(%superq(val_list1), %str(%')) = 0 and %index(%superq(val_list1), %str(%")) = 0
-	%then %let mask1 = 1;
+    %let val_list1 = %sysfunc(compress(&val_list1, %str(%'%")));
+    %let val_list2 = %sysfunc(compress(&val_list2, %str(%'%")));
+    %put &val_list1, &val_list2;
+	%if %sysfunc(notdigit(%sysfunc(compress(&val_list1, %str( )))))>0 %then %let mask1 = 1;
 	%else %let mask1 = 0;
-	%if %sysfunc(notdigit(%superq(val_list2)))=0 and %index(%superq(val_list2), %str(%')) = 0 and %index(%superq(val_list2), %str(%")) = 0
-	%then %let mask2 = 1;
-	%else %let mask2 = 0;
-
-	%put &mask1, &mask2;
-	%put end;
+	%if %sysfunc(notdigit(%sysfunc(compress(&val_list2, %str( )))))>0 %then %let mask2 = 1;
+	%else %let mask1 = 0;
 
 	%let cnt1 = %sysfunc(countw(&val_list1, %str( )));
 	%let cnt2 = %sysfunc(countw(&val_list2, %str( )));
@@ -40,16 +35,16 @@ option minoperator;
 	%do i = 1 %to &cnt1;
 		%do j = 1 %to &cnt2;
 			%if &mask1 = 1 and &mask2 = 1 %then %do;
-				if &attr1 = "%scan(&val_list1, &i)" and &attr2 = "%scan(&val_list2, &j)" then &cf_nm = cats(putn(&i, z&ndigit1..), '|', putn(&j, z&ndigit2.));
+				if &attr1 = "%scan(&val_list1, &i)" and &attr2 = "%scan(&val_list2, &j)" then &cf_nm = cats(put(&i, z&ndigit1..), '|', put(&j, z&ndigit2.));
 			%end;
 			%else %if &mask1 = 1 and &mask2 = 0 %then %do;
-				if &attr1 = "%scan(&val_list1, &i)" and &attr2 = %scan(&val_list2, &j) then &cf_nm = cats(putn(&i, z&ndigit1..), '|', putn(&j, z&ndigit2..));
+				if &attr1 = "%scan(&val_list1, &i)" and &attr2 = %scan(&val_list2, &j) then &cf_nm = cats(put(&i, z&ndigit1..), '|', put(&j, z&ndigit2..));
 			%end;
 			%else %if &mask1 = 0 and &mask2 = 1 %then %do;
-				if &attr1 = %scan(&val_list1, &i) and &attr2 = "%scan(&val_list2, &j)" then &cf_nm = cats(putn(&i, z&ndigit1..), '|', putn(&j, z&ndigit2..));
+				if &attr1 = %scan(&val_list1, &i) and &attr2 = "%scan(&val_list2, &j)" then &cf_nm = cats(put(&i, z&ndigit1..), '|', put(&j, z&ndigit2..));
 			%end;
 			%else %if &mask1 = 0 and &mask2 = 0 %then %do;
-				if &attr1 = %scan(&val_list1, &i) and &attr2 = %scan(&val_list2, &j) then &cf_nm = cats(putn(&i, z&ndigit1..), '|', putn(&j, z&ndigit2..));
+				if &attr1 = %scan(&val_list1, &i) and &attr2 = %scan(&val_list2, &j) then &cf_nm = cats(put(&i, z&ndigit1..), '|', put(&j, z&ndigit2..));
 			%end;
 		%end;
 	%end;
@@ -57,21 +52,8 @@ option minoperator;
 %mend;
 
 
-options symbolgen mprint;
+/*options nosymbolgen nomprint;*/
 data test1;
 	set test;
 	%cross_feature(class1, 1 2, class2, 'a' 'b' 'c', cf_nm=cf);
 run;
-
-
-%put %sysfunc(putn(1, z1.));
-
-%let val_list2 = 'a' 'b';
-%put %index(%superq(val_list2), %str(%'));
-%put %eval(%sysfunc(notdigit(%superq(val_list2))) and %index(%superq(val_list2), %str(%')) = 0 and %index(%superq(val_list2), %str(%")) = 0);
-);
-
-%let val_list1 = 1 2;
-%put %eval(%sysfunc(notdigit(%superq(val_list1))) and %index(%superq(val_list1), %str(%')) = 0 and %index(%superq(val_list1), %str(%")) = 0);
-
-%put %sysfunc(notdigit(%superq(val_list1)));

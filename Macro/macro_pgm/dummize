@@ -1,0 +1,81 @@
+/* @cgh
+** implement the dummization functionality
+*/
+
+data sample;
+	length col_a col_b $32;
+	input col_a $ col_b $;
+datalines;
+what chinese
+why japanese
+how American
+where 中国人
+when 澳大利亚人
+what 西班牙
+whatever 新西兰人
+when Super赛亚人
+col1 新人种（ABC）
+col2 新物种（ABC）
+col3 新人种（EFG）
+;
+
+run;
+
+%let gp_col = col_b;
+%let map_var_pfx = var_b_;
+%let dummy_out = dummy_mapping;
+%let onehot_out = onehot_mapping;
+
+proc sql;
+	create table _tmp_gp_val as 
+	select distinct &gp_col from sample order by &gp_col;
+quit;
+
+%let dsid = %sysfunc(open(_tmp_gp_val));
+%let nobs = %sysfunc(attrn(&dsid, nlobs));
+%let rc = %sysfunc(close((&dsid)));
+%put &nobs;
+
+%prefixVar(vlist, &map_var_pfx, 1-&nobs);
+%put &vlist;
+
+data &dummy_out; 
+	set _tmp_gp_val end = last;
+	array narr &vlist;
+	
+	do i = 1 to dim(narr);
+		narr[i] = 0;
+	end;
+
+	if not last then narr[_n_] = 1;
+	else do i = 1 to &nobs;
+		narr[i] = 1;
+	end;
+
+	drop i;
+run;
+
+
+data &onehot_out;
+	set _tmp_gp_val end = last;
+	array narr &vlist;
+	
+	do i = 1 to dim(narr);
+		narr[i] = 0;
+	end;
+ 	narr[_n_] = 1;
+
+	drop i;
+run;
+
+** use the newly encoded data to INNER/OUTER JOIN the target datasets;
+** then you can get the desired variables;
+
+
+
+
+
+
+
+
+
